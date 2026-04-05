@@ -73,4 +73,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  feature-svc:
+    build:
+      context: ./feature-svc
+      dockerfile: Dockerfile
+    container_name: feature-svc
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://aesthetic:aesthetic_password@postgres:5432/aesthetic_hub
+      - EC2_ACCESS_KEY=${EC2_ACCESS_KEY}
+      - EC2_SECRET_KEY=${EC2_SECRET_KEY}
+      - OBJSTORE_CONTAINER=${OBJSTORE_CONTAINER:-ObjStore_proj21}
+      - OBJSTORE_BATCH_SIZE=50
+      - S3_ENDPOINT_URL=https://chi.tacc.chameleoncloud.org:7480
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+
 volumes: {}

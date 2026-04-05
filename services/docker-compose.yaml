@@ -1,0 +1,76 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_USER: aesthetic
+      POSTGRES_PASSWORD: aesthetic_password
+      POSTGRES_DB: aesthetic_hub
+    ports:
+      - "5432:5432"
+    volumes:
+      - /mnt/db-data/postgres:/var/lib/postgresql/data
+      - ./init_sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aesthetic -d aesthetic_hub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    ports:
+      - "5050:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://aesthetic:aesthetic_password@postgres:5432/aesthetic_hub
+      - OBJSTORE_CONTAINER=${OBJSTORE_CONTAINER:-ObjStore_proj21}
+      - OBJSTORE_INTERACTIONS_PREFIX=production-sim/interactions
+      - EC2_ACCESS_KEY=${EC2_ACCESS_KEY}
+      - EC2_SECRET_KEY=${EC2_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./api/app:/code/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  generator:
+    build:
+      context: ./generator
+      dockerfile: Dockerfile
+    container_name: generator
+    environment:
+      - GENERATOR_API_URL=http://api:8000
+      - GENERATOR_ARRIVAL_RATE=${GENERATOR_ARRIVAL_RATE:-500.0}
+      - GENERATOR_INITIAL_USERS=${GENERATOR_INITIAL_USERS:-5}
+      - GENERATOR_LOG_LEVEL=${GENERATOR_LOG_LEVEL:-INFO}
+      - OBJSTORE_CONTAINER=${OBJSTORE_CONTAINER:-ObjStore_proj21}
+      - HOLDOUT_PARQUET_PATH=datasets/personalized-flickr/new_user_holdout.parquet
+      - EC2_ACCESS_KEY=${EC2_ACCESS_KEY}
+      - EC2_SECRET_KEY=${EC2_SECRET_KEY}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes: {}

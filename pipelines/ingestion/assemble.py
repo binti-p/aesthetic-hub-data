@@ -7,6 +7,7 @@ import pyarrow.parquet as pq
 from pathlib import Path
 from PIL import Image, ImageFile
 from tqdm import tqdm
+import os
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -16,11 +17,23 @@ BATCH_SIZE  = 64
 DEVICE      = "cuda" if torch.cuda.is_available() else "cpu"
 
 
+DEVICE       = "cuda" if torch.cuda.is_available() else "cpu"
+WEIGHTS_CACHE = os.path.expanduser("~/.cache/clip/ViT-L-14.pt")  # where clip.load() puts it
+
+_model      = None
+_preprocess = None
+
+
 def load_clip():
+    global _model, _preprocess
+    if _model is not None:
+        return _model, _preprocess
     print(f"loading CLIP ViT-L/14 on {DEVICE}...")
-    model, preprocess = clip.load("ViT-L/14", device=DEVICE)
-    model.eval()
-    return model, preprocess
+    print("(first run: auto-downloads ~933MB from OpenAI CDN into ~/.cache/clip/)")
+    _model, _preprocess = clip.load("ViT-L/14", device=DEVICE)
+    _model.eval()
+    print("CLIP loaded successfully")
+    return _model, _preprocess
 
 
 def load_cache():
@@ -122,10 +135,16 @@ def assemble_personalized_flickr(workers_df, cache):
             OUTPUT_DIR / "personalized-flickr" / f"{split}.parquet"
         )
 
+    container = os.environ.get("OBJSTORE_CONTAINER", "ObjStore_proj21")
+    endpoint  = os.environ.get("S3_ENDPOINT_URL", "https://chi.tacc.chameleoncloud.org:7480")
+
     holdout = df[df["split"] == "production_new_user"][
-        ["worker_id", "image_name", "image_path", "embedding", "worker_score_norm"]
-    ].rename(columns={"worker_id": "user_id", "worker_score_norm": "score", "image_path": "s3_url"})
-    holdout["s3_url"] = holdout["s3_url"].astype(str)
+        ["worker_id", "image_name", "embedding", "worker_score_norm"]
+    ].rename(columns={"worker_id": "user_id", "worker_score_norm": "score"})
+
+    holdout["s3_url"] = holdout["image_name"].apply(
+        lambda name: f"{endpoint}/{container}/raw-data/flickr-aes/images/{name}"
+    )
 
     write_parquet(
         holdout[["user_id", "image_name", "s3_url", "embedding", "score"]],

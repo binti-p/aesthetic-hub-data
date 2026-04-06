@@ -86,3 +86,12 @@ class AestheticScore(Base):
     inference_request_id = Column(String)
     source               = Column(String, nullable=False, default="immich_upload")
     scored_at            = Column(DateTime(timezone=True), server_default=func.now())
+
+class Asset(Base):
+    __tablename__ = "assets"
+
+    asset_id      = Column(String, primary_key=True)
+    s3_url        = Column(String, nullable=False)
+    user_id       = Column(String, nullable=False)
+    source        = Column(String, nullable=False, default="holdout_simulation")
+    first_seen_at = Column(DateTime(timezone=True), server_default=func.now())

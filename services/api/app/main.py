@@ -49,11 +49,17 @@ async def record_upload(
         interaction_count=0,
     ).on_conflict_do_nothing(index_elements=["user_id"])
     db.execute(stmt)
+    stmt = insert(models.Asset).values(
+        asset_id=event.asset_id,
+        s3_url=event.s3_url,
+        user_id=event.user_id,
+        source=event.source,
+    ).on_conflict_do_nothing(index_elements=["asset_id"])
+    db.execute(stmt)
     db.commit()
 
     logger.info(f"upload: user={event.user_id[:8]} asset={event.asset_id[:8]}")
     return {"status": "ok", "event_id": str(uuid.uuid4())}
-
 
 @app.post("/events/interaction", response_model=schemas.InteractionResponse)
 async def record_interaction(

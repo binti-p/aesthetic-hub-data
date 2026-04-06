@@ -111,3 +111,15 @@ CREATE INDEX IF NOT EXISTS idx_aesthetic_scores_user  ON aesthetic_scores(user_i
 CREATE INDEX IF NOT EXISTS idx_aesthetic_scores_asset ON aesthetic_scores(asset_id);
 CREATE INDEX IF NOT EXISTS idx_aesthetic_scores_model ON aesthetic_scores(model_version);
 CREATE INDEX IF NOT EXISTS idx_aesthetic_scores_time  ON aesthetic_scores(scored_at);
+
+CREATE TABLE IF NOT EXISTS assets (
+    asset_id      VARCHAR PRIMARY KEY,
+    s3_url        VARCHAR NOT NULL,
+    user_id       VARCHAR NOT NULL,
+    source        VARCHAR(32) NOT NULL DEFAULT 'holdout_simulation',
+    first_seen_at TIMESTAMPTZ DEFAULT NOW(),
+    CHECK (source IN ('immich_upload', 'holdout_simulation'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_assets_user   ON assets(user_id);
+CREATE INDEX IF NOT EXISTS idx_assets_source ON assets(source);

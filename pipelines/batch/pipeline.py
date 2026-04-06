@@ -33,7 +33,7 @@ from candidate import select_candidates
 from features import load_clip_embeddings, load_user_embeddings, join_features
 from splits import assign_bursts, chronological_split
 from writer import write_datasets
-
+from cleanup import main as cleanup_main
 load_dotenv()
 
 logging.basicConfig(
@@ -167,6 +167,10 @@ def main():
     logger.info(f"train: {card['train_rows']} val: {card['val_rows']} test: {card['test_rows']}")
     logger.info(f"output: datasets/{args.version}/personalized-flickr/")
     logger.info("=" * 70)
+
+    logger.info("step 7: running cleanup...")
+    cleanup_main()
+    logger.info("cleanup complete")
 
 
 if __name__ == "__main__":

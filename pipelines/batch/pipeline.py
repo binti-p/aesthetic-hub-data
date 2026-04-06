@@ -99,11 +99,10 @@ def get_git_sha() -> str:
     try:
         return subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"],
-            cwd="/app"
+            cwd=os.path.dirname(os.path.abspath(__file__))
         ).decode().strip()
     except Exception:
         return "unknown"
-
 
 def main():
     parser = argparse.ArgumentParser(description="Aesthetic Hub batch pipeline")
